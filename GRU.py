@@ -101,13 +101,13 @@ class GRU(nn.Module):
         super(GRU, self).__init__()
         # self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, bidirectional=False)
         self.gru = nn.GRU(input_size, hidden_size, num_layers=num_layers, batch_first=True)
-        self.fc = nn.Linear(hidden_size ,1)  # 乘以2是因为使用了双向LSTM
+        self.fc = nn.Linear(hidden_size ,1)  
         self.pre_len=pre_len
     def forward(self, x):
         # x 的形状应该是 (batch_size, sequence_length, input_size)
         lstm_out, _ = self.gru(x)
-        # lstm_out 的形状是 (batch_size, sequence_length, hidden_size * 2) 因为是双向LSTM
-        output = self.fc(lstm_out[:,-pre_len :, :])  # 取最后一个时刻的输出
+        # lstm_out 的形状是 (batch_size, sequence_length, hidden_size * 2) 
+        output = self.fc(lstm_out[:,-pre_len :, :]) 
         return output
 
 class TimeSeriesDataset(Dataset):
@@ -148,9 +148,6 @@ def NSE(sim_tensor, obs_tensor):
     # return 1 - (torch.sum((torch.square(y - pred))) / torch.sum(torch.square(y - torch.mean(y) * torch.ones(y.shape))))
 
     import torch
-
-    # 假设sim_tensor是模拟值的张量，obs_tensor是观测值的张量
-    # 确保它们具有相同的形状
     assert sim_tensor.shape == obs_tensor.shape
 
     # 计算观测值的平均值
@@ -184,22 +181,11 @@ def NSE1(pred, y):
     pred = torch.from_numpy(pred)
     y = torch.from_numpy(y)
     return 1 - (torch.sum((torch.square(y - pred))) / torch.sum(torch.square(y - torch.mean(y) * torch.ones(y.shape))))
+
 class EarlyStopping:
     """Early stops the training if validation loss doesn't improve after a given patience."""
     def __init__(self, patience=7, verbose=False, delta=0, path=id, trace_func=print):
-        """
-        Args:
-            patience (int): How long to wait after last time validation loss improved.
-                            Default: 7
-            verbose (bool): If True, prints a message for each validation loss improvement.
-                            Default: False
-            delta (float): Minimum change in the monitored quantity to qualify as an improvement.
-                            Default: 0
-            path (str): Path for the checkpoint to be saved to.
-                            Default: 'checkpoint.pt'
-            trace_func (function): trace print function.
-                            Default: print
-        """
+
         self.patience = patience
         self.verbose = verbose
         self.counter = 0
@@ -317,7 +303,7 @@ for filename in os.listdir(source_folder):
         end2="_streamflow_clear.csv"
 
         full_path2 = "{}{}{}".format(begin2, id,end2)
-        true_data = pd.read_csv(full_path2)  # 填你自己的数据地址,自动选取你最后一列数据为特征列
+        true_data = pd.read_csv(full_path2)  
 
         quend = "_qu.pt"
         jiend = "_ji.pt"
@@ -331,7 +317,7 @@ for filename in os.listdir(source_folder):
 
         train_window = 10  # 观测窗口
         epochs = 100
-        # 10个epoch还没有到收敛的时候
+        
 
         # early stopping patience; how long to wait after last time validation loss improved.
         patience = 10
@@ -376,7 +362,7 @@ for filename in os.listdir(source_folder):
         test_dataset = TimeSeriesDataset(test_inout_seq)
 
         # 创建 DataLoader
-        batch_size = 32  # 你可以根据需要调整批量大小
+        batch_size = 32  
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
         valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
         test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, drop_last=True)
@@ -446,7 +432,7 @@ for filename in os.listdir(source_folder):
                     nse = NSE(y_pred, labels)
                     losnse+=nse.item()
                     # losnse.append(nse.detach().numpy())
-                    # tensor(0.9728)  这个结果说明，预测结果好哇
+                    # tensor(0.9728)  
 
                     print(nse)
 
@@ -614,34 +600,16 @@ for filename in os.listdir(source_folder):
             plt.savefig('{}_test.png'.format(id))
             plt.close()
             # 这里输出的评价指标怎么这么大呢，是不是不合理哦？？
-            mae, mse, rmse, mape, mspe, rse, nd, nrmse, nse, kge, bias = metric(reals, results)
-            print(
-                'nd:{}, nrmse:{}, mse:{}, mae:{}, rse:{}, mape:{}, nse:{}, kge:{}, bias:{}'.format(nd, nrmse, mse, mae,
-                                                                                                   rse, mape, nse, kge,
-                                                                                                   bias))
-            test_mape = np.mean(np.abs((results - reals) / reals))  # 平均绝对百分比误差
-            # rmse
-            test_rmse = np.sqrt(np.mean(np.square(results - reals)))  # 均方根误差
-            # mae
-            test_mae = np.mean(np.abs(results - reals))  # 平均绝对误差
-            # R2
-            from sklearn.metrics import r2_score
-            test_r2 = r2_score(reals, results)
-            from sklearn.metrics import mean_squared_error
-            mse = mean_squared_error(reals, results)
-
-            print('LSTM测试集的mape:', test_mape, ' rmse:', test_rmse, ' mae:', test_mae, ' R2:', test_r2, 'mse:', mse, 'nse:', nse)
+           rse, nd, nrmse, nse, kge,  = metric(reals, results)
+        
             # 假设这是模型计算得到的指标
             data = {
                 'id': [id],  # 确保'id'是一个列表
                 'nse': [nse],  # 将nse转换为列表
-                'mape': [mape],
-                'r^2': [test_r2],
                 'rse': [rse],
                 'nrmse': [nrmse],
                 'nd': [nd],
                 'kge': [kge],
-                'bias': [bias]  # bias也转换为列表
             }
             import csv
 
@@ -654,13 +622,11 @@ for filename in os.listdir(source_folder):
                 df = pd.read_csv(csv_file)
     
                 new_df = pd.DataFrame(data)
-                # 假设'id'列是索引或者我们想要基于它合并数据（但在这个例子中，我们直接追加）
+            
                 df = df.append(new_df, ignore_index=True)  # ignore_index=True用于重置索引
             except FileNotFoundError:
-                # 如果文件不存在，直接创建新的DataFrame
+          
                 df = pd.DataFrame(data)
-
-                # 将DataFrame写回CSV文件，不会覆盖原有数据
             df.to_csv(csv_file, index=False, encoding='utf_8_sig')  # index=False表示不保存索引到CSV文件
 
 print('所有文件已处理完毕，图表已保存到目标文件夹。')
